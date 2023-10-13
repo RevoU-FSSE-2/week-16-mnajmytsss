@@ -1,9 +1,6 @@
 const {Router} = require('express')
 const bookController = require('../controller/bookController')
 const { 
-    authorizationMiddlewareAdmin,
-    authorizationMiddlewareManager, 
-    authorizationMiddlewareUser,
     authorizationMiddlewareAll
 } = require("../middleware/authorizationMiddleware")
 
