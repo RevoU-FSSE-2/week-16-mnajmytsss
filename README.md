@@ -3,10 +3,6 @@
 
 This API provides endpoints for managing books. There are two clients (Client X and Client Y) with different access levels.
 
-![Local Image](./assets/3.png)
-
-![Local Image](./assets/2.png)
-
 ## Table of Contents
 
 - API Endpoints
@@ -14,14 +10,27 @@ This API provides endpoints for managing books. There are two clients (Client X 
   - Get All Books
   - PUT Book
   - DELETE Book
+  - Register
+  - Login
+  - Logout
+  - Refresh Token
+  - Reset Password Request
+  - Reset Password
+- Client Role
+  - Manage
+  - Admin
+  - User
 - Client Permissions
-    - Origin (GET, POST, PUT, DELETE)
-    - Partner Origin (GET, POST) 
+    - Manager (GET)
+    - Admin (GET) (POST, PUT, DELETE, "his own book only")
+    - User (GET) (POST, PUT, DELETE, "his own book only")
 - Middleware
   - CORS
   - Helmet
   - Morgan
   - Security XSS
+  - Cookie Middleware
+  - Body Parser
 
 # Getting Started
 ## API Endpoints
@@ -52,6 +61,28 @@ This API provides endpoints for managing books. There are two clients (Client X 
 }
 ```
 
+### Register
+
+- **URL:** `/auth/register`
+- **Method:** `POST`
+### Login
+
+- **URL:** `/auth/login`
+- **Method:** `POST`
+### Logout
+
+- **URL:** `/auth/logout`
+- **Method:** `POST`
+### Refresh Token
+
+- **URL:** `/auth/refresh-token`
+- **Method:** `POST`
+### Request to Reset Password
+
+- **URL:** `/auth/reset-password`
+- **Method:** `POST`
+
+### Reset Password
 ### Get all Book
 
 - **URL:** `/api/v1/books`
@@ -70,12 +101,6 @@ This API provides endpoints for managing books. There are two clients (Client X 
 
 - **URL:** `/api/v1/books${id}`
 - **Method:** `DELETE`
-
-# Client Permissions
-- There is 3 api in this site that allowed to acces from this site
-    - **Najmy's Api** Can perform all methods (GET, POST, UPDATE, DELETE).
-    - **Deffi's Api** Can only perform GET and POST methods.
-    - **Avicena's Api** Can only perform GET and POST methods.
 
 ## Middleware
 ### CORS
@@ -97,10 +122,7 @@ XSS protection is implemented both on the server and client side to prevent cros
 Feel free to customize this template according to your specific needs and add more details as required.
 
 
-![Local Image](./assets/1.png)
-
-
-[Try me!!](https://week-15-mnajmytsss.vercel.app/)
+[Try me!!](https://lovely-ant-pea-coat.cyclic.app/)
 
 
 
