@@ -2,16 +2,17 @@ const jwt = require('jsonwebtoken')
 const { JWT_SIGN } = require('../config/jwt')
 
 const authorizationMiddlewareAll = (req, res, next) => {
-    const authHeader = req.headers.authorization
+    const authHeader = req.cookies.access_token;
 
     if(!authHeader) {
         res.status(401).json({error: "unauthorized"})
     } else {
-        const token = authHeader.split('') [1]
-
         try {
-            const decodedToken = jwt.verify(token, JWT_SIGN)
-            if(decodedToken.role === 'admin' || decodedToken.role === 'user' || decodedToken.role === 'super user') {
+            if (!JWT_SIGN) {
+                throw new Error("JWT_SIGN is not defined");
+              }
+            const decodedToken = jwt.verify(authHeader, JWT_SIGN)
+            if(decodedToken.role === 'admin' || decodedToken.role === 'user' || decodedToken.role === 'manager') {
                 next()
             } else {
                 res.status(401).json({error: "Unauthorized"})
@@ -23,15 +24,16 @@ const authorizationMiddlewareAll = (req, res, next) => {
 }
 
 const authorizationMiddlewareAdmin = (req, res, next) => {
-    const authHeader = req.headers.authorization
+    const authHeader = req.cookies.access_token;
 
     if(!authHeader) {
         res.status(401).json({error: "Unauthorized"})
     } else {
-        const token = authHeader.split('') [1]
-        
         try {
-            const decodedToken = jwt.verify(token, JWT_SIGN)
+             if (!JWT_SIGN) {
+                throw new Error("JWT_SIGN is not defined");
+              }
+            const decodedToken = jwt.verify(authHeader, JWT_SIGN)
             if(decodedToken.role === 'admin') {
                 next()
             } else {
@@ -44,15 +46,16 @@ const authorizationMiddlewareAdmin = (req, res, next) => {
 }
 
 const authorizationMiddlewareUser = (req, res, next) => {
-    const authHeader = req.headers.authorization
+    const authHeader = req.cookies.access_token;
 
     if(!authHeader) {
         res.status(401).json({error: "Unauthorized"})
     } else {
-        const token = authHeader.split('') [1]
-        
         try {
-            const decodedToken = jwt.verify(token, JWT_SIGN)
+            if (!JWT_SIGN) {
+                throw new Error("JWT_SIGN is not defined");
+              }
+            const decodedToken = jwt.verify(authHeader, JWT_SIGN)
             if(decodedToken.role === 'user') {
                 next()
             } else {
@@ -64,16 +67,18 @@ const authorizationMiddlewareUser = (req, res, next) => {
     }
 }
 
-const authorizationMiddlewareSuperUser = (req, res, next) => {
-    const authHeader = req.headers.authorization 
+const authorizationMiddlewareManager = (req, res, next) => {
+    const authHeader = req.cookies.access_token; 
 
     if(!authHeader) {
         res.status(401).json({error: "Unauthorized"})
     } else {
-        const token = authHeader.split('') [1]
         try {
-            const decodedToken = jwt.verify(token, JWT_SIGN)
-            if(decodedToken.role === 'super user') {
+            if (!JWT_SIGN) {
+                throw new Error("JWT_SIGN is not defined");
+              }
+            const decodedToken = jwt.verify(authHeader, JWT_SIGN)
+            if(decodedToken.role === 'manager') {
                 next()
             } else {
                 res.status(401).json({error: 'Unauthorized'})
@@ -88,5 +93,5 @@ module.exports = {
     authorizationMiddlewareAll,
     authorizationMiddlewareAdmin,
     authorizationMiddlewareUser,
-    authorizationMiddlewareSuperUser
+    authorizationMiddlewareManager
 }
