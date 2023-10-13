@@ -1,9 +1,10 @@
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
-const JWT_SIGN = require('../config/jwt')
+const { JWT_SIGN } = require('../config/jwt');
 const NodeCache = require('node-cache')
 const { addDays } = require("date-fns");
 const { v4: uuidv4 } = require('uuid');
+const { verify } = require('jsonwebtoken');
 
 const validRoles = ["user", "admin", "manager"];
 const failedLoginAttemptsCache = new NodeCache({ stdTTL: 600 });
@@ -148,7 +149,6 @@ const login = async (req, res, next) => {
   
 
 const refreshAccessToken = async (req, res, next) => {
-    const { db } = req
     const refreshToken = req.cookies.refresh_token;
 
     if (!refreshToken) {
@@ -158,9 +158,11 @@ const refreshAccessToken = async (req, res, next) => {
       })
     }
 
+    if (!JWT_SIGN) throw new Error('JWT_SIGN is not defined')
+      const decodedRefreshToken = jwt.verify(refreshToken, JWT_SIGN);
+    console.log(decodedRefreshToken);
+
     try {
-      if (!JWT_SIGN) throw new Error('JWT_SIGN is not defined')
-      const decodedRefreshToken = jwt.verify(refreshToken, JWT_SIGN, { algorithms: ['HS256'] });
       if (
         !decodedRefreshToken || !decodedRefreshToken.exp 
       ) {
@@ -179,7 +181,7 @@ const refreshAccessToken = async (req, res, next) => {
         }
       }
 
-      const accessToken= sign({userId: decodedRefreshToken.userId}. JWT_SIGN, {
+      const accessToken= jwt.sign({userId: decodedRefreshToken.userId}, JWT_SIGN, {
         expiresIn: "10m",
       })
 
