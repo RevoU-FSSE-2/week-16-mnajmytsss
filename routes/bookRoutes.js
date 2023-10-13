@@ -1,20 +1,26 @@
 const {Router} = require('express')
 const bookController = require('../controller/bookController')
+const { 
+    authorizationMiddlewareAdmin,
+    authorizationMiddlewareManager, 
+    authorizationMiddlewareUser,
+    authorizationMiddlewareAll
+} = require("../middleware/authorizationMiddleware")
 
 const router = Router();
 
 //HTTP Method
 
 //Post Book
-router.post('/', bookController.createBook)
+router.post('/books', authorizationMiddlewareAll, bookController.createBook)
 
 //Get Book
-router.get('/', bookController.getAllBook)
+router.get('/books', authorizationMiddlewareAll, bookController.getAllBook)
 
 //Put Book
-router.put('/:id', bookController.updateBook)
+router.put('/books/:id', authorizationMiddlewareAll, bookController.updateBook)
 
 //Delete Book
-router.delete('/:id', bookController.deleteBook)
+router.delete('/books/:id', authorizationMiddlewareAll, bookController.deleteBook)
 
 module.exports = router;
