@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken')
 const JWT_SIGN = require('../config/jwt')
 const NodeCache = require('node-cache')
 const { addDays } = require("date-fns");
-const { uuid }  = require('uuid-v4');
+const { v4: uuidv4 } = require('uuid');
 
 const validRoles = ["user", "admin", "manager"];
 const failedLoginAttemptsCache = new NodeCache({ stdTTL: 600 });
@@ -160,8 +160,7 @@ const refreshAccessToken = async (req, res, next) => {
 
     try {
       if (!JWT_SIGN) throw new Error('JWT_SIGN is not defined')
-      const decodedRefreshToken = jwt.verify(refreshToken, JWT_SIGN)
-
+      const decodedRefreshToken = jwt.verify(refreshToken, JWT_SIGN, { algorithms: ['HS256'] });
       if (
         !decodedRefreshToken || !decodedRefreshToken.exp 
       ) {
@@ -214,11 +213,10 @@ const logout = async (req, res, next) => {
   };
 
   const requestResetPassword = async (req, res, next) => {
-    const { db } = req;
     const { username } = req.body;
 
     try {
-      const user = await usersCollection.findOne({ username })
+      const user = await req.usersCollection.findOne({ username });
 
       if (!user) {
         throw {
@@ -226,8 +224,8 @@ const logout = async (req, res, next) => {
           message: "User not found.",
           success: false,
         }
-      }
-      const tokenResetPassword = uuid();
+      } 
+      const tokenResetPassword = uuidv4();
 
       cacheKey.set(tokenResetPassword, username, 900);
       return res.status(200).json({
@@ -235,25 +233,30 @@ const logout = async (req, res, next) => {
         message: "reset password link has been sent",
         data: tokenResetPassword,
       })
-    } catch {error} {
-      return res.status(error.status || 500).json({
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({
         success: false,
-        message: error.message || 'internal server error'
-      })
+        message: error.message || 'Internal Server Error',
+      });
     }
   };
 
   const resetPassword = async (req, res, next) => {
-    const { db } = req;
-    const { token } = req.query;
     const { newPassword } = req.body;
+    const { token } = req.query;
+    console.log('Request Query:', req.query);
+    console.log('Request Body:', req.body);
+
 
     try {
-      if(typeof token !== 'string' || typeof newPassword !== 'string') {
-        throw new Error('token or new password is not string')
-      }
+      if (!token || typeof token !== 'string') {
+        throw ('Token is not a string.');
+    }
 
       const username = cacheKey.get(token);
+      console.log('Username retrieved from cache:', username);
+
       if(!username) {
         throw {
           success: false,
@@ -262,9 +265,16 @@ const logout = async (req, res, next) => {
         }
       }
 
+      const user = await req.usersCollection.findOne({ username });
+
+      if (!user) {
+      res.status(400).json({ error: "User not found" });
+      return;
+      }
+
       const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-      await userCollection.findOneAndUpdate({username}, { $set: { password: hashedPassword}});
+      await req.usersCollection.findOneAndUpdate({ username }, { $set: { password: hashedPassword } });
 
       cacheKey.del(token);
 
