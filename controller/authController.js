@@ -3,10 +3,11 @@ const jwt = require('jsonwebtoken')
 const JWT_SIGN = require('../config/jwt')
 const NodeCache = require('node-cache')
 const { addDays } = require("date-fns");
-const nodemailer = require("nodemailer")
+const { uuid }  = require('uuid-v4');
 
 const validRoles = ["user", "admin", "manager"];
 const failedLoginAttemptsCache = new NodeCache({ stdTTL: 600 });
+const cacheKey = new NodeCache({ stdTTL: 300 });
 
 const register = async (req, res) => {
     try {
@@ -146,43 +147,56 @@ const login = async (req, res, next) => {
   };
   
 
-  const refreshAccessToken = async (req, res) => {
+const refreshAccessToken = async (req, res, next) => {
+    const { db } = req
+    const refreshToken = req.cookies.refresh_token;
+
+    if (!refreshToken) {
+      return res.status(401).json({
+        success: false,
+        message: "refresh token is missing"
+      })
+    }
+
     try {
-        const { refresh_token } = req.cookies;
+      if (!JWT_SIGN) throw new Error('JWT_SIGN is not defined')
+      const decodedRefreshToken = jwt.verify(refreshToken, JWT_SIGN)
 
-        if (!refresh_token) {
-            throw new Error('Refresh token not provided');
+      if (
+        !decodedRefreshToken || !decodedRefreshToken.exp 
+      ) {
+        throw {
+          success: false,
+          status: 401,
+          message: 'Refresh token is invalid or has expired. Please login again',
         }
+      }
 
-        const JWT_SIGN = process.env.JWT_SIGN;
-
-        if (!JWT_SIGN) {
-            throw new Error('JWT_SIGN is not defined');
+      if (decodedRefreshToken.exp < Date.now() / 1000) {
+        throw {
+          success: false,
+          status: 401,
+          message: "Refresh token has expired. Please login again"
         }
+      }
 
-        const decoded = jwt.verify(refresh_token, JWT_SIGN);
+      const accessToken= sign({userId: decodedRefreshToken.userId}. JWT_SIGN, {
+        expiresIn: "10m",
+      })
 
-        const { username, id, role } = decoded;
+      res.cookie("access_token", accessToken, {
+        maxAge: 10 * 60 * 1000,
+        httpOnly: true,
+      })
 
-        const accessToken = jwt.sign(
-            { username, id, role },
-            JWT_SIGN,
-            { expiresIn: '10m' }
-        );
+      return res.status(200).json({
+        success: true,
+        message: "access token refresh successfully",
+        data: { accessToken }
+      })
 
-        res.cookie('access_token', accessToken, {
-            maxAge: 10 * 60 * 1000,
-            httpOnly: true,
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: {
-                accessToken,
-            },
-        });
     } catch (error) {
-        res.status(401).json({ success: false, error: 'Invalid refresh token' });
+      next(error)
     }
 };
 
@@ -199,75 +213,77 @@ const logout = async (req, res, next) => {
     }
   };
 
-  const requestResetPassword = async (req, res) => {
+  const requestResetPassword = async (req, res, next) => {
+    const { db } = req;
+    const { username } = req.body;
+
     try {
-      const { email } = req.body;
-  
-      const user = await usersCollection.findOne({ email });
-  
+      const user = await usersCollection.findOne({ username })
+
       if (!user) {
-        return res.status(404).json({
+        throw {
+          status: 404,
+          message: "User not found.",
           success: false,
-          message: 'User not found.',
-        });
-      }
-  
-      const resetToken = await bcrypt.hash(user.email, 10);
-  
-      const expiredAt = new Date();
-      expiredAt.setHours(expiredAt.getHours() + 1);
-  
-      await PasswordReset.create({
-        email: user.email,
-        token: resetToken,
-        expiredAt,
-      });
-  
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: 'your-email@gmail.com',
-          pass: 'your-email-password',
-        },
-      });
-  
-      const resetLink = `http://your-frontend-url/reset-password/${resetToken}`;
-  
-      const mailOptions = {
-        from: 'your-email@gmail.com',
-        to: user.email,
-        subject: 'Reset Password',
-        html: `<p>Click the link to reset your password: ${resetLink}</p>`,
-      };
-  
-      transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-          console.error(error);
-          return res.status(500).json({
-            success: false,
-            message: 'Failed to send reset password email.',
-          });
-        } else {
-          console.log('Email sent: ' + info.response);
-          return res.status(200).json({
-            success: true,
-            message: 'Password reset request has been sent. Please check your email.',
-          });
         }
-      });
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({
+      }
+      const tokenResetPassword = uuid();
+
+      cacheKey.set(tokenResetPassword, username, 900);
+      return res.status(200).json({
+        success: true,
+        message: "reset password link has been sent",
+        data: tokenResetPassword,
+      })
+    } catch {error} {
+      return res.status(error.status || 500).json({
         success: false,
-        message: 'Internal server error.',
-      });
+        message: error.message || 'internal server error'
+      })
     }
   };
+
+  const resetPassword = async (req, res, next) => {
+    const { db } = req;
+    const { token } = req.query;
+    const { newPassword } = req.body;
+
+    try {
+      if(typeof token !== 'string' || typeof newPassword !== 'string') {
+        throw new Error('token or new password is not string')
+      }
+
+      const username = cacheKey.get(token);
+      if(!username) {
+        throw {
+          success: false,
+          status: 401,
+          message: "invalid or expired token",
+        }
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      await userCollection.findOneAndUpdate({username}, { $set: { password: hashedPassword}});
+
+      cacheKey.del(token);
+
+      return res.status(200).json({
+        success: true,
+        message: "password reset successfully",
+      });
+
+    } catch (error) {
+      console.error(error);
+      next(error)
+    }
+  }
 
 module.exports = {
     register,
     login,
     refreshAccessToken,
     requestResetPassword,
+    resetPassword,
     logout
 }
