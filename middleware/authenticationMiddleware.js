@@ -2,19 +2,19 @@ const jwt = require('jsonwebtoken')
 const { JWT_SIGN } = require('../config/jwt')
 
 const authenticationMiddleware = (req, res,next) => {
-    const authHeader = req.headers.authorization
+    const authHeader = req.cookies.access_token;
 
     if(!authHeader) {
         res.status(401).json({error: "unauthorized" })
     } else {
-        const token = authHeader.split('') [1]
-
         try {
-            const decodedToken = jwt.verify(token, JWT_SIGN)
-            console.log(decodedToken, "decodedToken");
-            next()
-        } catch {
-            res.satus(400).json({ error: error.message })
+          if (!JWT_SIGN) {
+            throw new Error("JWT_SIGN is not defined");
+          }
+          const decodedToken = jwt.verify(authHeader, JWT_SIGN);
+          console.log("Verified user:", decodedToken);
+          next();
+        } catch (error) {
         }
     }
 }
