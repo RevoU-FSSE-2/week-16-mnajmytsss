@@ -4,7 +4,6 @@ const { JWT_SIGN } = require('../config/jwt');
 const NodeCache = require('node-cache')
 const { addDays } = require("date-fns");
 const { v4: uuidv4 } = require('uuid');
-const { verify } = require('jsonwebtoken');
 
 const validRoles = ["user", "admin", "manager"];
 const failedLoginAttemptsCache = new NodeCache({ stdTTL: 600 });
