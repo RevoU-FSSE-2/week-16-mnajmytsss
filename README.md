@@ -29,8 +29,12 @@ This API provides endpoints for managing books. There are two clients (Client X 
   - Helmet
   - Morgan
   - Security XSS
-  - Cookie Middleware
+  - Cookie Parser
   - Body Parser
+  - uuid
+  - nodeCache
+  - nodeMailer
+  - date-fns
 
 # Getting Started
 ## API Endpoints
@@ -118,6 +122,10 @@ Morgan is an HTTP request logger middleware for logging requests.
 ### Security XSS
 
 XSS protection is implemented both on the server and client side to prevent cross-site scripting attacks.
+
+### Cookie Parser
+
+Cookie parser is a component used in web development to handle and parse HTTP cookies. Cookies are small pieces of data that a web server sends to a user's browser, which are then stored on the user's device
 
 Feel free to customize this template according to your specific needs and add more details as required.
 
